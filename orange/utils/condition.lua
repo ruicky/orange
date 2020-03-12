@@ -4,6 +4,7 @@ local string_find = string.find
 local string_lower = string.lower
 local ngx_re_find = ngx.re.find
 local re_gmatch = ngx.re.gmatch
+local json = require("orange.utils.json")
 
 local function assert_condition(real, operator, expected)
     if not real then
@@ -134,12 +135,18 @@ function _M.judge(condition)
         end
 
         ngx.req.read_body()
-        local post_params, err = ngx.req.get_post_args()
+        local post_params, err = ngx.req.get_body_data()
         if not post_params or err then
             ngx.log(ngx.ERR, "[Condition Judge]failed to get post args: ", err)
             return false
         end
-
+        -- 如果参数是json，解码
+        if header then
+            local is_json = string_find(header, "application/json")
+            if is_json and is_json > 0 then
+                post_params = json.decode(post_params)
+            end
+        end 
         real = post_params[condition.name]
     elseif condition_type == "Referer" then
         real =  ngx.var.http_referer
